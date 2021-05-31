@@ -7,7 +7,14 @@ function siteEstablishedDays() {
     let d = new Date();
     let today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     return Math.floor((today - establishedAt) / 86400000 + 1);
-};
+}
+
+function site3yearAgoDays() {
+    let d = new Date();
+    let today = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    let today3 = new Date(d.getFullYear() -3, d.getMonth(), d.getDate());
+    return Math.floor((today - today3) / 86400000 + 1);
+}
 
 // clock
 $('#established-at').countdown(establishedAt, {
@@ -294,7 +301,7 @@ function updateVisitSummaryChart() {
         for (var i in data) {
             actions.push(data[i]);
         }
-        ;
+
         visitSummaryChart.setOption({
             series: [{
                 name: '浏览次数',
@@ -309,7 +316,7 @@ setInterval(function () {
     if (!document.hidden) {
         updateVisitSummaryChart();
     }
-    ;
+
 }, 60000);
 
 var visitHourlyChart = echarts.init(document.getElementById('visit-hourly'), 'light');
@@ -700,18 +707,34 @@ function updateVisitMapChart() {
                 }]
         });
     });
-};
+}
 updateVisitMapChart();
 setInterval(function () {
     if (!document.hidden) {
         updateVisitMapChart();
     }
-    ;
 }, 60000);
 
 var visitCalendarChart = echarts.init(document.getElementById('visit-calendar'), 'light');
 var firstYear = establishedAt.getFullYear();
-var maxYear = 2021;
+var newdate = new Date();
+var maxYear = newdate.getFullYear();
+var yearNum = 3;
+calendarList = new Array(yearNum);
+calendarList[0] = {
+    range: maxYear-2,
+    right: 5
+}
+calendarList[1] = {
+    range: maxYear-1,
+    right: 5,
+    top:240
+}
+calendarList[2] = {
+    range: maxYear,
+    right: 5,
+    top: 420
+}
 visitCalendarChart.setOption({
     baseOption: {
         title: {
@@ -741,30 +764,7 @@ visitCalendarChart.setOption({
             top: 'top',
             left: 0
         },
-        calendar: [{
-            range: 2016,
-            right: 5
-        }, {
-            range: 2017,
-            right: 5,
-            top: 240
-        }, {
-            range: 2018,
-            right: 5,
-            top: 420
-        }, {
-            range: 2019,
-            right: 5,
-            top: 600
-        }, {
-            range: 2020,
-            right: 5,
-            top: 780
-        }, {
-            range: 2021,
-            right: 5,
-            top: 960
-        }],
+        calendar: calendarList,
         series: [{
             type: 'heatmap',
             coordinateSystem: 'calendar',
@@ -779,21 +779,6 @@ visitCalendarChart.setOption({
             type: 'heatmap',
             coordinateSystem: 'calendar',
             calendarIndex: 2,
-            data: []
-        }, {
-            type: 'heatmap',
-            coordinateSystem: 'calendar',
-            calendarIndex: 3,
-            data: []
-        }, {
-            type: 'heatmap',
-            coordinateSystem: 'calendar',
-            calendarIndex: 4,
-            data: []
-        }, {
-            type: 'heatmap',
-            coordinateSystem: 'calendar',
-            calendarIndex: 5,
             data: []
         }]
     },
@@ -820,18 +805,6 @@ visitCalendarChart.setOption({
                 orient: 'vertical',
                 left: 'center',
                 top: 2350
-            }, {
-                orient: 'vertical',
-                left: 'center',
-                top: 3480
-            }, {
-                orient: 'vertical',
-                left: 'center',
-                top: 4610
-            }, {
-                orient: 'vertical',
-                left: 'center',
-                top: 5740
             }]
         }
     }]
@@ -843,43 +816,40 @@ function updateVisitCalendarChart() {
         'method': 'VisitsSummary.getActions',
         'idSite': analyticsAPI.id,
         'period': 'day',
-        'date': `last${siteEstablishedDays()}`,
+        'date': `last${site3yearAgoDays()}`,
         'format': 'JSON',
         'token_auth': analyticsAPI.token
     }, function (data) {
-        var cursorYear = firstYear;
+        var keys = Object.keys(data);
+        var before_year = Number(keys[keys.length-1].slice(0, 4)) - 2 // 2年前
+        var cursorYear = before_year;
         var series = [{
-            calendarIndex: cursorYear - firstYear,
+            calendarIndex: cursorYear - before_year,
             data: []
         }];
+
         for (var i in data) {
-            if (data[i] !== 0) {
-                year = Number(i.slice(0, 4));
-                if (year > cursorYear && year <= maxYear) {
-                    cursorYear = year;
-                    series.push({
-                        calendarIndex: cursorYear - firstYear,
-                        data: []
-                    });
-                } else if (year < firstYear || year > maxYear) {
-                    continue;
-                }
-                series.forEach(function (val,index) {
-                    if (val.calendarIndex == (cursorYear - firstYear)){
-                        series[index].data.push([
-                            echarts.format.formatTime('yyyy-MM-dd', i),
-                            data[i]
-                        ]);
-                    }
-                })
-                // series[cursorYear - firstYear].data.push([
-                //     echarts.format.formatTime('yyyy-MM-dd', i),
-                //     data[i]
-                // ]);
+
+            year = Number(i.slice(0, 4));
+            // console.log(year,cursorYear,maxYear)
+            if (year > cursorYear && year <= maxYear) {
+                cursorYear = year;
+                series.push({
+                    calendarIndex: cursorYear - before_year,
+                    data: []
+                });
+                // console.log(series)
+            } else if (year < before_year || year > maxYear) {
+                continue;
             }
-            ;
+
+            series[cursorYear - firstYear].data.push([
+                echarts.format.formatTime('yyyy-MM-dd', i),
+                data[i]
+            ]);
+
         }
-        ;
+        // console.log(series);
         visitCalendarChart.setOption({
             series: series
         });
@@ -890,5 +860,4 @@ setInterval(function () {
     if (!document.hidden) {
         updateVisitCalendarChart();
     }
-    ;
 }, 60000);
